@@ -1,0 +1,5 @@
+Prediction,Truth,Freq
+Fail,Fail,1078
+Pass,Fail,627
+Fail,Pass,562
+Pass,Pass,307

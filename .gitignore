@@ -1,0 +1,15 @@
+.
+repo_structure.txt
+..
+.DS_Store
+.Rhistory
+.Rprofile
+janitor
+shap_feature_importance_report_files
+.Rproj.user
+shap_report.Rproj
+.ipynb_checkpointsrenv
+Rplots.pdf
+renv.lock
+README.qmd
+outputs/shap_results.rds
