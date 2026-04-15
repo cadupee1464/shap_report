@@ -101,8 +101,9 @@ isolated subject outcomes.
 
 - **Validation:** Held-out test set (AUC \> baseline)
 
-![Model AUC Comparisons](images/model_auc_comparison.png)
-
+<p align="center">
+  <img src="images/model_auc_comparison.png" width="700" alt="Model AUC Comparisons">
+</p>
 
 ### Interpretability
 
@@ -140,8 +141,9 @@ Includes:
 
 - Domain-level aggregation
 
-![Aggregation of SHAP contribution by Domain](images/domain_importance.png)
-
+<p align="center">
+  <img src="images/domain_importance.png" width="700" alt="Aggregation of SHAP contribution by Domain">
+</p>
 - Confidence interval visualization
 
 - Interpretation of results
