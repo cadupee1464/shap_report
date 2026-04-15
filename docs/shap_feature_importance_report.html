@@ -1,0 +1,2547 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.5.57">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Christopher DuPée">
+
+<title>Feature Importance in Educational Outcomes using SHAP with Confidence Intervals</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="shap_feature_importance_report_files/libs/clipboard/clipboard.min.js"></script>
+<script src="shap_feature_importance_report_files/libs/quarto-html/quarto.js"></script>
+<script src="shap_feature_importance_report_files/libs/quarto-html/popper.min.js"></script>
+<script src="shap_feature_importance_report_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="shap_feature_importance_report_files/libs/quarto-html/anchor.min.js"></script>
+<link href="shap_feature_importance_report_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="shap_feature_importance_report_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="shap_feature_importance_report_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="shap_feature_importance_report_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="shap_feature_importance_report_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="fullcontent">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Feature Importance in Educational Outcomes using SHAP with Confidence Intervals</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Christopher DuPée </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="overview" class="level2">
+<h2 class="anchored" data-anchor-id="overview">Overview</h2>
+<p>Educational agencies collect large volumes of student assessment data across multiple tests within a single academic year. However, not all assessments are equally informative for predicting outcomes on high-stakes exams.</p>
+<p>This project answers a practical question:</p>
+<blockquote class="blockquote">
+<p><strong>Which same-year assessment results are most strongly associated with whether a student passes the ELA state exam?</strong></p>
+</blockquote>
+<p>To address this, I built a supervised machine learning pipeline and applied <strong>SHAP (Shapley Additive Explanations)</strong> to quantify feature importance—augmented with <strong>confidence intervals</strong> to assess the stability of those importance estimates.</p>
+<hr>
+</section>
+<section id="key-takeaways" class="level2">
+<h2 class="anchored" data-anchor-id="key-takeaways">Key Takeaways</h2>
+<ul>
+<li><strong>Math summative assessments were the strongest predictors of ELA outcomes</strong>, consistently ranking highest across SHAP importance metrics.</li>
+<li><strong>Science assessments also showed some predictive value</strong>, reinforcing cross-disciplinary alignment in student performance.</li>
+<li><strong>Demographic and school-level variables had relatively low importance</strong>, suggesting limited predictive contribution in this model.</li>
+<li><strong>Feature importance rankings were stable</strong>, supported by narrow confidence intervals.</li>
+</ul>
+<p><strong>Interpretation:</strong><br>
+Student achievement behaves as a <em>generalized academic signal</em>, not a collection of isolated subject-specific outcomes.</p>
+<hr>
+</section>
+<section id="method" class="level2">
+<h2 class="anchored" data-anchor-id="method">Method</h2>
+<section id="modeling-approach" class="level3">
+<h3 class="anchored" data-anchor-id="modeling-approach">Modeling Approach</h3>
+<ul>
+<li><strong>Problem Type:</strong> Binary classification (ELA pass vs.&nbsp;not pass)<br>
+</li>
+<li><strong>Model Type:</strong> Random Forest (H2O)<br>
+</li>
+<li><strong>Why Random Forest?</strong>
+<ul>
+<li>Handles nonlinear relationships</li>
+<li>Robust to correlated predictors</li>
+<li>Works well with mixed data types</li>
+</ul></li>
+</ul>
+<section id="model-validation" class="level4">
+<h4 class="anchored" data-anchor-id="model-validation">Model Validation</h4>
+<p>Model performance was evaluated on a held-out test set to ensure that predictions reflect generalizable patterns rather than overfitting.</p>
+<p><img src="images/model_auc_comparison.png" class="img-fluid" width="1210"></p>
+<p>The models achieved performance above a random baseline (AUC &gt; 0.50), indicating that they capture meaningful structure in the data. While predictive performance is not the primary objective of this analysis, this validation step ensures that SHAP-based feature importance results are grounded in a model with non-random predictive signal.</p>
+</section>
+</section>
+<section id="interpretability-layer" class="level3">
+<h3 class="anchored" data-anchor-id="interpretability-layer">Interpretability Layer</h3>
+<ul>
+<li><strong>Technique:</strong> SHAP values<br>
+</li>
+<li><strong>Purpose:</strong> Attribute each prediction to feature-level contributions<br>
+</li>
+<li><strong>Key Property:</strong> Additivity — feature contributions sum to the model prediction difference from baseline</li>
+</ul>
+</section>
+<section id="addressing-shap-instability" class="level3">
+<h3 class="anchored" data-anchor-id="addressing-shap-instability">Addressing SHAP Instability</h3>
+<p>SHAP values can vary depending on the sample. To ensure reliability:</p>
+<ul>
+<li>Confidence intervals were computed for each feature’s mean contribution<br>
+</li>
+<li>Feature importance is treated as a <strong>distribution</strong>, not a point estimate</li>
+</ul>
+</section>
+</section>
+<section id="methodological-note-stabilizing-shap-estimates-across-models" class="level2">
+<h2 class="anchored" data-anchor-id="methodological-note-stabilizing-shap-estimates-across-models">Methodological Note: Stabilizing SHAP Estimates Across Models</h2>
+<p>A known limitation of SHAP-based feature importance is its sensitivity to model specification. SHAP values derived from a single fitted model may produce unstable feature rankings, particularly when multiple plausible models exist or when model performance varies across configurations.</p>
+<p>To address this, this project implements methods provided by the <code>shapley</code> package, which enables <strong>weighted aggregation of SHAP values across multiple models</strong>.</p>
+<p>Specifically:</p>
+<ul>
+<li>A grid of Random Forest models was trained using 10-fold cross-validation<br>
+</li>
+<li>SHAP values were computed across all models in the grid<br>
+</li>
+<li>Feature contributions were aggregated using <strong>performance-weighted means</strong><br>
+</li>
+<li><strong>Confidence intervals</strong> were estimated to quantify variability across models</li>
+</ul>
+<p>This approach addresses two key issues in standard SHAP analysis:</p>
+<ol type="1">
+<li><strong>Model dependence</strong> – Feature importance is not tied to a single “best” model<br>
+</li>
+<li><strong>Estimation uncertainty</strong> – Variability across models is explicitly quantified</li>
+</ol>
+<p>By incorporating model performance into SHAP aggregation and estimating confidence intervals, the resulting feature importance reflects <strong>consensus across models rather than idiosyncrasies of a single fit</strong>.</p>
+<p>This produces more stable, interpretable, and defensible feature importance rankings, aligning interpretability with statistical rigor.</p>
+</section>
+<section id="data-preparation" class="level2">
+<h2 class="anchored" data-anchor-id="data-preparation">Data Preparation</h2>
+<ul>
+<li>Source: Anonymized statewide assessment dataset<br>
+</li>
+<li>Structure transformation:
+<ul>
+<li>From <strong>long format (test-level)</strong> → <strong>wide format (student-level)</strong></li>
+</ul></li>
+<li>Key preprocessing steps:
+<ul>
+<li>Train/test split with consistent preprocessing pipeline</li>
+</ul></li>
+</ul>
+<hr>
+</section>
+<section id="findings" class="level2">
+<h2 class="anchored" data-anchor-id="findings">Findings</h2>
+<section id="feature-importance-shap" class="level3">
+<h3 class="anchored" data-anchor-id="feature-importance-shap">Feature Importance (SHAP)</h3>
+<p>Feature importance was computed as the <strong>mean absolute SHAP value</strong> across test observations.</p>
+</section>
+<section id="global-feature-importance-plot" class="level3">
+<h3 class="anchored" data-anchor-id="global-feature-importance-plot">Global Feature Importance Plot</h3>
+<p><img src="images/shap_features_bar.png" class="img-fluid" width="1200"></p>
+<p>For the complete set of contribution values, see Appendix 1.</p>
+<p><strong>Top features:</strong></p>
+<p>1. Math Summative Assessments (multiple grade levels)</p>
+<p>2. ELA interim assessments (secondary tier)</p>
+<p>3. Science Summative Assessments</p>
+<p>4. School identifiers</p>
+<p><strong>Lower-importance features:</strong></p>
+<p>- Demographic indicators<br>
+- Language status variables</p>
+</section>
+<section id="domain-level-feature-importance" class="level3">
+<h3 class="anchored" data-anchor-id="domain-level-feature-importance">Domain-Level Feature Importance</h3>
+<p>To improve interpretability, features were grouped into domains:</p>
+<p>Tests (academic assessments) Demographics Other (school-level, metadata, etc.)</p>
+</section>
+<section id="domain-aggregation-table" class="level3">
+<h3 class="anchored" data-anchor-id="domain-aggregation-table">Domain Aggregation Table</h3>
+<div class="cell">
+<div class="cell-output-display">
+<div id="ucudcyhbbw" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#ucudcyhbbw table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#ucudcyhbbw thead, #ucudcyhbbw tbody, #ucudcyhbbw tfoot, #ucudcyhbbw tr, #ucudcyhbbw td, #ucudcyhbbw th {
+  border-style: none;
+}
+
+#ucudcyhbbw p {
+  margin: 0;
+  padding: 0;
+}
+
+#ucudcyhbbw .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#ucudcyhbbw .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#ucudcyhbbw .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#ucudcyhbbw .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#ucudcyhbbw .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#ucudcyhbbw .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#ucudcyhbbw .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#ucudcyhbbw .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#ucudcyhbbw .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#ucudcyhbbw .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#ucudcyhbbw .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#ucudcyhbbw .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#ucudcyhbbw .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#ucudcyhbbw .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#ucudcyhbbw .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#ucudcyhbbw .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#ucudcyhbbw .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#ucudcyhbbw .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#ucudcyhbbw .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ucudcyhbbw .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#ucudcyhbbw .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#ucudcyhbbw .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#ucudcyhbbw .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ucudcyhbbw .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#ucudcyhbbw .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#ucudcyhbbw .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#ucudcyhbbw .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ucudcyhbbw .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#ucudcyhbbw .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#ucudcyhbbw .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#ucudcyhbbw .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#ucudcyhbbw .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#ucudcyhbbw .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ucudcyhbbw .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#ucudcyhbbw .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#ucudcyhbbw .gt_left {
+  text-align: left;
+}
+
+#ucudcyhbbw .gt_center {
+  text-align: center;
+}
+
+#ucudcyhbbw .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#ucudcyhbbw .gt_font_normal {
+  font-weight: normal;
+}
+
+#ucudcyhbbw .gt_font_bold {
+  font-weight: bold;
+}
+
+#ucudcyhbbw .gt_font_italic {
+  font-style: italic;
+}
+
+#ucudcyhbbw .gt_super {
+  font-size: 65%;
+}
+
+#ucudcyhbbw .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#ucudcyhbbw .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#ucudcyhbbw .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#ucudcyhbbw .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#ucudcyhbbw .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#ucudcyhbbw .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#ucudcyhbbw .gt_indent_5 {
+  text-indent: 25px;
+}
+
+#ucudcyhbbw .katex-display {
+  display: inline-flex !important;
+  margin-bottom: 0.75em !important;
+}
+
+#ucudcyhbbw div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+  height: 0px !important;
+}
+</style>
+
+<table class="gt_table caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
+<thead>
+<tr class="header gt_heading">
+<th colspan="4" class="gt_heading gt_title gt_font_normal gt_bottom_border">SHAP Domain Contributions</th>
+</tr>
+<tr class="odd gt_col_headings">
+<th id="domain" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" scope="col">Domain</th>
+<th id="mean" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">Mean Contribution</th>
+<th id="lowerCI" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">Lower CI</th>
+<th id="upperCI" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">Upper CI</th>
+</tr>
+</thead>
+<tbody class="gt_table_body">
+<tr class="odd">
+<td class="gt_row gt_left" headers="domain">Tests</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #9E9E9E; color: #FFFFFF">0.908</td>
+<td class="gt_row gt_right" headers="lowerCI">0.905</td>
+<td class="gt_row gt_right" headers="upperCI">0.912</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="domain">Demographic</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #281517; color: #FFFFFF">0.057</td>
+<td class="gt_row gt_right" headers="lowerCI">0.054</td>
+<td class="gt_row gt_right" headers="upperCI">0.060</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="domain">Other</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #000000; color: #FFFFFF">0.035</td>
+<td class="gt_row gt_right" headers="lowerCI">0.033</td>
+<td class="gt_row gt_right" headers="upperCI">0.037</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+</section>
+<section id="domain-importance-plot" class="level3">
+<h3 class="anchored" data-anchor-id="domain-importance-plot">Domain Importance Plot</h3>
+<p><img src="images/domain_importance.png" class="img-fluid" width="810"></p>
+</section>
+<section id="confidence-intervals" class="level3">
+<h3 class="anchored" data-anchor-id="confidence-intervals">Confidence Intervals</h3>
+<p>Confidence intervals revealed:</p>
+<ul>
+<li><strong>Top features had tight intervals → stable importance rankings</strong></li>
+<li><strong>Lower-ranked features clustered tightly → minimal differentiation</strong></li>
+</ul>
+<p>This supports the conclusion that the model is identifying <strong>real structure</strong>, not sampling noise.</p>
+<hr>
+</section>
+</section>
+<section id="discussion" class="level2">
+<h2 class="anchored" data-anchor-id="discussion">Discussion</h2>
+<section id="feature-importance-and-interpretation" class="level3">
+<h3 class="anchored" data-anchor-id="feature-importance-and-interpretation">Feature Importance and Interpretation</h3>
+<p>Feature importance results indicate that the strongest predictors of student performance are other assessments administered within the same academic year. Summative Math assessments consistently occupy the top positions, suggesting that model predictions are most strongly informed by broader patterns of academic performance rather than isolated, test-specific factors.</p>
+<p>At the next tier, influential features include an ELA 8th Grade Interim Assessment Block (IAB), the Grade 8 CAST (California Science Test), and school site (SchoolName). The presence of these variables suggests that additional same-year assessments—particularly those capturing applied or cross-domain knowledge—contribute meaningfully to the model, even when they do not dominate overall importance rankings.</p>
+<p>The appearance of school site as a mid-tier feature introduces a contextual component. While categorical variables as a group contribute less to the model than assessment-based features, the relative position of school site suggests that site-level variation may exert a measurable, though secondary, influence on predicted outcomes. This effect may reflect differences in instructional context, resource allocation, or student population characteristics.</p>
+<p>Interpretation of the CAST’s contribution requires consideration of dataset structure. The CAST is administered only in Grades 8 &amp; 11, whereas Math assessments are distributed across multiple grade levels. This difference reduces the representation of CAST results within the dataset, which may in turn limit its aggregate contribution to model-based importance measures. In addition, Grade 11 students are not always enrolled in a concurrent science course, which may influence preparedness and attenuate observed performance. As a result, the CAST’s importance should be interpreted with these structural constraints in mind.</p>
+<p>Overall, the feature importance pattern is consistent with an interpretation of student performance as an interconnected academic outcome. The prominence of multiple same-year assessments, including those from different subject areas, suggests that cross-domain academic proficiency provides stronger predictive signal than alignment to any single assessment.</p>
+</section>
+<section id="limited-role-of-demographics" class="level3">
+<h3 class="anchored" data-anchor-id="limited-role-of-demographics">Limited Role of Demographics</h3>
+<p>Demographic variables show:</p>
+<ul>
+<li>Lower SHAP importance</li>
+<li>Minimal contribution relative to academic measures</li>
+</ul>
+<p>This indicates:</p>
+<ul>
+<li>Predictive signal is primarily academic</li>
+<li>Non-academic variables are less informative in this modeling context</li>
+</ul>
+</section>
+<section id="stability-of-results" class="level3">
+<h3 class="anchored" data-anchor-id="stability-of-results">Stability of Results</h3>
+<ul>
+<li>Narrow confidence intervals for top features</li>
+<li>Tight clustering among lower-ranked features</li>
+</ul>
+<p>This supports: - Robust feature ranking - Low sensitivity to sampling variation</p>
+</section>
+<section id="summary" class="level3">
+<h3 class="anchored" data-anchor-id="summary">Summary</h3>
+<ul>
+<li>Summative Math assessments provide the strongest predictive signal.</li>
+<li>Additional same-year assessments (including IABs and CAST) contribute at a secondary but meaningful level.</li>
+<li>School site introduces a modest contextual effect within the model.</li>
+<li>Structural factors likely constrain the measured contribution of the CAST.</li>
+<li>Model behavior is consistent with a cross-domain interpretation of student performance.</li>
+</ul>
+</section>
+</section>
+<section id="practical-implications" class="level2">
+<h2 class="anchored" data-anchor-id="practical-implications">Practical Implications</h2>
+<section id="move-away-from-isolated-test-prep" class="level3">
+<h3 class="anchored" data-anchor-id="move-away-from-isolated-test-prep">1. Move Away from Isolated Test Prep</h3>
+<ul>
+<li>High importance of cross-subject performance suggests that:
+<ul>
+<li>ELA success is not isolated</li>
+<li>General academic strength drives outcomes</li>
+</ul></li>
+</ul>
+</section>
+<section id="focus-on-systemic-academic-development" class="level3">
+<h3 class="anchored" data-anchor-id="focus-on-systemic-academic-development">2. Focus on Systemic Academic Development</h3>
+<ul>
+<li>Resources may be better allocated toward:
+<ul>
+<li>Broad instructional quality</li>
+<li>Cross-disciplinary skill development</li>
+</ul></li>
+</ul>
+</section>
+<section id="use-shap-for-transparent-decision-support" class="level3">
+<h3 class="anchored" data-anchor-id="use-shap-for-transparent-decision-support">3. Use SHAP for Transparent Decision Support</h3>
+<ul>
+<li>Stakeholders can:
+<ul>
+<li>See <em>why</em> predictions are made</li>
+<li>Compare assessment value directly</li>
+<li>Avoid black-box decision making</li>
+</ul></li>
+</ul>
+<hr>
+</section>
+</section>
+<section id="limitations" class="level2">
+<h2 class="anchored" data-anchor-id="limitations">Limitations</h2>
+<ul>
+<li><strong>Single-year snapshot</strong> (no longitudinal trends)</li>
+<li><strong>Binary outcome simplification</strong> (loss of achievement-level nuance)</li>
+</ul>
+<hr>
+</section>
+<section id="reproducibility" class="level2">
+<h2 class="anchored" data-anchor-id="reproducibility">Reproducibility</h2>
+<p>This project was built as a <strong>pipeline-based workflow</strong>:</p>
+<ul>
+<li><strong>R</strong>: Data preprocessing, SHAP aggregation, visualization</li>
+<li><strong>H2O</strong>: Model training and prediction contributions</li>
+<li><strong>Bash</strong>: Workflow orchestration</li>
+</ul>
+<p>Outputs include: - SHAP importance table with confidence intervals<br>
+- Feature importance visualization<br>
+- Reproducible scripts for full pipeline execution</p>
+<p>The full analysis pipeline—including data preprocessing, model training, SHAP computation, and confidence interval estimation—is available in the project repository:</p>
+<p>!!!!1 [GitHub Repository Link]!!!!!</p>
+<p>All visualizations and tables in this report are generated from persisted pipeline artifacts to ensure reproducibility and separation between analysis and presentation layers.</p>
+<hr>
+</section>
+<section id="conclusion" class="level2">
+<h2 class="anchored" data-anchor-id="conclusion">Conclusion</h2>
+<p>This project demonstrates that:</p>
+<ul>
+<li><strong>SHAP values provide interpretable, comparable feature importance across heterogeneous educational data</strong></li>
+<li><strong>Confidence intervals significantly strengthen interpretability by quantifying uncertainty</strong></li>
+<li><strong>Student performance is best understood as a unified academic signal rather than isolated subject outcomes</strong></li>
+</ul>
+<p>From a data science perspective, the key contribution is not just model performance, but <strong>making model behavior legible and decision-ready</strong>.</p>
+<hr>
+</section>
+<section id="next-steps" class="level2">
+<h2 class="anchored" data-anchor-id="next-steps">Next Steps</h2>
+<ul>
+<li>Extend to <strong>multi-year longitudinal modeling</strong></li>
+<li>Compare <strong>model-specific vs.&nbsp;model-agnostic SHAP stability</strong></li>
+<li>Incorporate <strong>AUC-driven model comparison across architectures</strong></li>
+</ul>
+</section>
+<section id="authorship-and-ai-use" class="level2">
+<h2 class="anchored" data-anchor-id="authorship-and-ai-use">Authorship and AI Use</h2>
+<p>All project design, methodology, code, and analysis were developed by the author. AI tools (ChatGPT) were used to assist with editing and improving clarity of presentation.</p>
+<section id="appendix-1-global-feature-importance-table" class="level3">
+<h3 class="anchored" data-anchor-id="appendix-1-global-feature-importance-table">Appendix 1: Global Feature Importance Table</h3>
+<div id="tbl-shap-full" class="cell anchored">
+<div class="cell-output-display">
+<div id="atgjejhfdi" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#atgjejhfdi table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#atgjejhfdi thead, #atgjejhfdi tbody, #atgjejhfdi tfoot, #atgjejhfdi tr, #atgjejhfdi td, #atgjejhfdi th {
+  border-style: none;
+}
+
+#atgjejhfdi p {
+  margin: 0;
+  padding: 0;
+}
+
+#atgjejhfdi .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#atgjejhfdi .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#atgjejhfdi .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#atgjejhfdi .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#atgjejhfdi .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#atgjejhfdi .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#atgjejhfdi .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#atgjejhfdi .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#atgjejhfdi .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#atgjejhfdi .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#atgjejhfdi .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#atgjejhfdi .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#atgjejhfdi .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#atgjejhfdi .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#atgjejhfdi .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#atgjejhfdi .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#atgjejhfdi .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#atgjejhfdi .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#atgjejhfdi .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#atgjejhfdi .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#atgjejhfdi .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#atgjejhfdi .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#atgjejhfdi .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#atgjejhfdi .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#atgjejhfdi .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#atgjejhfdi .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#atgjejhfdi .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#atgjejhfdi .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#atgjejhfdi .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#atgjejhfdi .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#atgjejhfdi .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#atgjejhfdi .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#atgjejhfdi .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#atgjejhfdi .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#atgjejhfdi .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#atgjejhfdi .gt_left {
+  text-align: left;
+}
+
+#atgjejhfdi .gt_center {
+  text-align: center;
+}
+
+#atgjejhfdi .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#atgjejhfdi .gt_font_normal {
+  font-weight: normal;
+}
+
+#atgjejhfdi .gt_font_bold {
+  font-weight: bold;
+}
+
+#atgjejhfdi .gt_font_italic {
+  font-style: italic;
+}
+
+#atgjejhfdi .gt_super {
+  font-size: 65%;
+}
+
+#atgjejhfdi .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#atgjejhfdi .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#atgjejhfdi .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#atgjejhfdi .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#atgjejhfdi .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#atgjejhfdi .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#atgjejhfdi .gt_indent_5 {
+  text-indent: 25px;
+}
+
+#atgjejhfdi .katex-display {
+  display: inline-flex !important;
+  margin-bottom: 0.75em !important;
+}
+
+#atgjejhfdi div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+  height: 0px !important;
+}
+</style>
+
+<table class="gt_table caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
+<thead>
+<tr class="header gt_heading">
+<th colspan="3" class="gt_heading gt_title gt_font_normal gt_bottom_border">SHAP Domain Contributions</th>
+</tr>
+<tr class="odd gt_col_headings">
+<th id="feature" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" scope="col">Feature</th>
+<th id="mean" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">Mean Contribution</th>
+<th id="lowerCI" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">Lower CI</th>
+</tr>
+</thead>
+<tbody class="gt_table_body">
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Math.Summative.Grade.8</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #9E9E9E; color: #FFFFFF">0.020</td>
+<td class="gt_row gt_right" headers="lowerCI">0.016</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Math.Summative.Grade.11</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #E56C8D; color: #FFFFFF">0.016</td>
+<td class="gt_row gt_right" headers="lowerCI">0.013</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Math.Summative.Grade.7</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #C54FC2; color: #FFFFFF">0.014</td>
+<td class="gt_row gt_right" headers="lowerCI">0.011</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.8.ELA...Read.Literary.Texts..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #A796D1; color: #FFFFFF">0.013</td>
+<td class="gt_row gt_right" headers="lowerCI">0.011</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">CAST.Summative.Grade.8</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #6CCBDF; color: #000000">0.012</td>
+<td class="gt_row gt_right" headers="lowerCI">0.010</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">SchoolName</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #4DD9E3; color: #000000">0.012</td>
+<td class="gt_row gt_right" headers="lowerCI">0.011</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Math.Summative.Grade.6</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #269DE6; color: #FFFFFF">0.009</td>
+<td class="gt_row gt_right" headers="lowerCI">0.008</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.8.ELA...Research..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #2C99E2; color: #FFFFFF">0.009</td>
+<td class="gt_row gt_right" headers="lowerCI">0.008</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.7.ELA...Read.Informational.Texts..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #469FD0; color: #FFFFFF">0.008</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.8.MATH...Geometry..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #5DADAE; color: #FFFFFF">0.008</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Summative.ELPAC.Grade.11</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #5EAEAC; color: #FFFFFF">0.008</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.8.ELA...Research..Analyze.and.Integrate.Information..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #5EAEAC; color: #FFFFFF">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">CAST.Summative.Grade.HS</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #5EAEAB; color: #FFFFFF">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.5.MATH...Operations.with.Whole.Numbers.and.Decimals..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #5EAEAB; color: #FFFFFF">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">High.School.ELA...Editing..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #5FAEAB; color: #FFFFFF">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">High.School.MATH...Performance.Task...Teen.Driving.Restrictions..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #5FAFAA; color: #FFFFFF">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.8.ELA...Research..Use.Evidence..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #5FAFAA; color: #FFFFFF">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.8.ELA...Write.and.Revise.Argumentative.Texts..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #5FAFAA; color: #FFFFFF">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">AmericanIndianOrAlaskaNative</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #5FAFAA; color: #FFFFFF">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.11.ELA...Interim.Comprehensive.Assessment..ICA.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #5FAFA9; color: #FFFFFF">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">BlackOrAfricanAmerican</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #5FAFA8; color: #FFFFFF">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.7.MATH...Interim.Comprehensive.Assessment..ICA.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #60B0A7; color: #FFFFFF">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.8.MATH...Congruence.and.Similarity..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #60B0A6; color: #FFFFFF">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.6.MATH...Divide.Fractions.by.Fractions..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #60B0A6; color: #FFFFFF">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">High.School.MATH...Geometry.Measurement.and.Modeling..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #60B0A6; color: #FFFFFF">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.8.ELA...Read.Informational.Texts..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #61B1A5; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">High.School.CAST.IA.Life.Sciences.I</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #61B1A4; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.7.ELA...Language.and.Vocabulary.Use..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #61B1A4; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">High.School.ELA...Brief.Writes..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #61B1A4; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.6.MATH...Geometry..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #61B1A4; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">High.School.ELA...Performance.Task...How.We.Learn..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #61B1A4; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.6.ELA...Performance.Task...Multivitamins..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #61B1A3; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.11.MATH...Interim.Comprehensive.Assessment..ICA.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #61B1A3; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Summative.ELPAC.Grade.6</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #61B2A3; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.7.ELPAC.IA.Listening.I</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #61B2A2; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.7.MATH...Expressions.and.Equations..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #61B2A2; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.7.MATH...Geometry..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #62B39E; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">NativeHawaiianOrOtherPacificIslander</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #63B49D; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">High.School.ELA...Listen.Interpret..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #63B49C; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Middle.School.CAST.IA.Earth.and.Space.Sciences.I</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #63B59B; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.6.MATH...Dependent.and.Independent.Variables..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #63B59B; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.7.ELA...Editing..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #63B599; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.8.MATH...Analyze.and.Solve.Linear.Equations..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #64B697; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">High.School.MATH...Create.Equations..Linear.and.Exponential..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #64B697; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Summative.ELPAC.Grade.7</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #64B696; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.8.ELA...Interim.Comprehensive.Assessment..ICA.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #64B696; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.7.ELA...Write.and.Revise.Narratives..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #64B796; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">High.School.ELA...Language.and.Vocabulary.Use..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #64B795; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">High.School.CAST.IA.Physical.Sciences.I</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #64B795; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.6.MATH...Rational.Number.System.II..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #64B794; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">LanguageAltCode</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #64B794; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.8.ELA...Listen.Interpret..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #64B794; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.7.ELA...Research..Evaluate.Information.and.Sources..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #65B991; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.8.ELA...Research..Evaluate.Information.and.Sources..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #65B98F; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.7.MATH...Geometric.Figures..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #65BA8E; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.007</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.6.ELPAC.IA.Listening.I</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #65BB8C; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.7.ELA...Research..Use.Evidence..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66BB8A; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.8.MATH...Proportional.Relationships..Lines..and.Linear.Equations..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66BB8A; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.5.MATH...Numerical.Expressions..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66BD84; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.6.ELA...Research..Use.Evidence..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66BE84; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.8.MATH...Volume.of.Cylinders..Cones..and.Spheres..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66BE84; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.8.MATH...Expressions.and.Equations.I..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66BE83; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.7.ELPAC.IA.Reading.I</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66BE82; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.6.ELPAC.IA.Reading.I</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66BF81; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">High.School.ELA...Research..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66BF80; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.8.ELPAC.IA.Speaking.I</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66C07F; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">High.School.CAST.IA.Earth.and.Space.Sciences.I</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66C07F; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.6.ELA...Write.and.Revise.Argumentative.Texts..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66C07E; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.9.10.ELPAC.IA.Reading.I</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66C07E; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.6.MATH...Expressions.and.Equations..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66C07E; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.6.ELA...Research..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66C07D; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">LanguageCode</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66C07C; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.11.12.ELPAC.IA.Reading.I</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66C17C; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">High.School.MATH...Solve.Equations.and.Inequalities..Quadratic..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66C17B; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">High.School.MATH...Geometry.Congruence..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66C17A; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">High.School.MATH...Solve.Equations.and.Inequalities..Linear.and.Exponential..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66C279; color: #000000">0.007</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.7.ELPAC.IA.Speaking.I</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66C375; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.7.ELA...Research..Analyze.and.Integrate.Information..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66C473; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.6.MATH...Statistics.and.Probability..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66C473; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.5.MATH...Geometry..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66C473; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Filipino</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66C472; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">High.School.MATH...Seeing.Structure.in.Expressions.Polynomial.Expressions..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66C571; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.7.ELA...Interim.Comprehensive.Assessment..ICA.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66C571; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">High.School.MATH...Geometry.and.Right.Triangle.Trigonometry..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66C570; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.6.ELA...Write.and.Revise.Narratives..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66C570; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.6.ELA...Research..Analyze.and.Integrate.Information..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66C56F; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.6.ELA...Editing..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66C56F; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.6.MATH...One.Variable.Expressions.and.Equations..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #66C56F; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">GradeLevelWhenAssessed</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #65C66D; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.7.MATH...Performance.Task...Camping.Tasks..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #65C66D; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.6.MATH...Algebraic.Expressions..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #65C66C; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">High.School.ELA...Read.Literary.Texts..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #65C66C; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.7.ELA...Write.and.Revise.Argumentative.Texts..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #65C66C; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Summative.ELPAC.Grade.8</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #65C869; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">High.School.MATH...Number.and.Quantity..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #65C869; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.7.ELA...Write.and.Revise.Explanatory.Texts..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #65C869; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.8.MATH...Performance.Task...Baseball.Tickets..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #65C868; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.11.12.ELPAC.IA.Listening.I</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #65C965; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Middle.School.CAST.IA.Physical.Sciences.I</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #64CA63; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">High.School.MATH...Algebra.and.Functions.II..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #64CA63; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.6.ELA...Language.and.Vocabulary.Use..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #64CB60; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Asian</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #64CB5F; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.8.ELA...Brief.Writes..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #64CB5F; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">High.School.MATH...Equations.and.Reasoning..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #63CC5D; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">White</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #63CC5D; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.006</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">High.School.ELA...Revision..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #63CC5C; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">High.School.ELA...Read.Informational.Texts..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #63CD5A; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.6.MATH...Performance.Task...Cell.Phone.Plan..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #63CD58; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.7.ELA...Listen.Interpret..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #63CD58; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.6.ELA...Research..Evaluate.Information.and.Sources..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #63CD57; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.6.MATH...Performance.Task...Feeding.the.Giraffe..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #62CE57; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.7.ELA...Research..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #62CE54; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.8.ELA...Editing..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #62CF52; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.6.MATH...Ratios.and.Proportional.Relationships..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #61D050; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">HispanicOrLatinoEthnicity</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #61D04F; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.6.ELA...Listen.Interpret..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #63CF4F; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.7.MATH...Angles..Areas..and.Volume..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #63CF4F; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.7.ELA...Revision..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #64CF4F; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.6.ELA...Read.Informational.Texts..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #6BCC51; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.7.MATH...Algebraic.Expressions.and.Equations..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #6BCC51; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.8.MATH...Interim.Comprehensive.Assessment..ICA.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #6BCC51; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.8.ELA...Performance.Task...Women.In.Space..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #6DCC51; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.004</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.8.ELPAC.IA.Reading.I</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #6DCB51; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.6.ELA...Revision..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #6ECB51; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.8.ELPAC.IA.Listening.I</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #6ECB51; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.5.MATH...Number.and.Operations.in.Base.Ten..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #72C952; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.004</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.6.ELPAC.IA.Writing.I</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #73C952; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.004</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.7.ELA...Brief.Writes..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #77C753; color: #000000">0.006</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.7.MATH...Statistics.and.Probability..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #79C653; color: #000000">0.005</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">EnglishLanguageAcquisitionStatus</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #7DC454; color: #000000">0.005</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.8.MATH...Functions..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #7EC354; color: #000000">0.005</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.7.ELA...Read.Literary.Texts..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #7FC354; color: #000000">0.005</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.8.ELA...Edit.Revise..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #7FC354; color: #000000">0.005</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.8.ELA...Language.and.Vocabulary.Use..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #80C254; color: #000000">0.005</td>
+<td class="gt_row gt_right" headers="lowerCI">0.004</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.4.ELA...Research..Use.Evidence..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #81C155; color: #000000">0.005</td>
+<td class="gt_row gt_right" headers="lowerCI">0.004</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.8.MATH...Expressions.and.Equations.II..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #84C055; color: #000000">0.005</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.6.MATH...Multidigit.Numbers..Factors..and.Multiples..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #8BBC57; color: #000000">0.005</td>
+<td class="gt_row gt_right" headers="lowerCI">0.004</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.7.MATH...Equivalent.Expressions..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #8CBB57; color: #000000">0.005</td>
+<td class="gt_row gt_right" headers="lowerCI">0.004</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.7.MATH...The.Number.System..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #93B758; color: #000000">0.005</td>
+<td class="gt_row gt_right" headers="lowerCI">0.005</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.5.ELA...Listen.Interpret..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #96B559; color: #000000">0.005</td>
+<td class="gt_row gt_right" headers="lowerCI">0.004</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">High.School.MATH...Create.Equations..Quadratic..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #9AB25A; color: #000000">0.005</td>
+<td class="gt_row gt_right" headers="lowerCI">0.004</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.11.12.ELPAC.IA.Speaking.I</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #9AB15A; color: #000000">0.005</td>
+<td class="gt_row gt_right" headers="lowerCI">0.004</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.6.ELA...Read.Literary.Texts..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #9CB05A; color: #000000">0.005</td>
+<td class="gt_row gt_right" headers="lowerCI">0.004</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.6.MATH...The.Number.System..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #A5A95C; color: #000000">0.005</td>
+<td class="gt_row gt_right" headers="lowerCI">0.004</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.8.MATH...The.Number.System..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #A6A85C; color: #000000">0.005</td>
+<td class="gt_row gt_right" headers="lowerCI">0.004</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Middle.School.CAST.IA.Life.Sciences.I</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #B09F5F; color: #FFFFFF">0.004</td>
+<td class="gt_row gt_right" headers="lowerCI">0.004</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">High.School.MATH...Algebra.and.Functions.I..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #B29D5F; color: #FFFFFF">0.004</td>
+<td class="gt_row gt_right" headers="lowerCI">0.004</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.7.MATH...Ratios.and.Proportional.Relationships..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #D36E68; color: #FFFFFF">0.003</td>
+<td class="gt_row gt_right" headers="lowerCI">0.003</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">High.School.ELA...Research..Evaluate.Information.and.Sources..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #432024; color: #FFFFFF">0.001</td>
+<td class="gt_row gt_right" headers="lowerCI">0.000</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">CSA.Summative.Grade.HS</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #000000; color: #FFFFFF">0.000</td>
+<td class="gt_row gt_right" headers="lowerCI">0.000</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.4.ELA...Listen.Interpret..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #000000; color: #FFFFFF">0.000</td>
+<td class="gt_row gt_right" headers="lowerCI">0.000</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.4.MATH...Number.and.Operations.in.Base.Ten..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #000000; color: #FFFFFF">0.000</td>
+<td class="gt_row gt_right" headers="lowerCI">0.000</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.5.ELA...Language.and.Vocabulary.Use..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #000000; color: #FFFFFF">0.000</td>
+<td class="gt_row gt_right" headers="lowerCI">0.000</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.5.ELA...Read.Literary.Texts..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #000000; color: #FFFFFF">0.000</td>
+<td class="gt_row gt_right" headers="lowerCI">0.000</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.5.MATH...Convert.Measurements..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #000000; color: #FFFFFF">0.000</td>
+<td class="gt_row gt_right" headers="lowerCI">0.000</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.5.MATH...Number.and.Operations...Fractions..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #000000; color: #FFFFFF">0.000</td>
+<td class="gt_row gt_right" headers="lowerCI">0.000</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.6.ELA...Interim.Comprehensive.Assessment..ICA.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #000000; color: #FFFFFF">0.000</td>
+<td class="gt_row gt_right" headers="lowerCI">0.000</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.6.MATH...Interim.Comprehensive.Assessment..ICA.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #000000; color: #FFFFFF">0.000</td>
+<td class="gt_row gt_right" headers="lowerCI">0.000</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.7.ELA...Performance.Task...Mobile.Ed.Technology..IAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #000000; color: #FFFFFF">0.000</td>
+<td class="gt_row gt_right" headers="lowerCI">0.000</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.8.ELA...Write.and.Revise.Explanatory.Texts..FIAB.</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #000000; color: #FFFFFF">0.000</td>
+<td class="gt_row gt_right" headers="lowerCI">0.000</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">Grade.8.ELPAC.IA.Listening.I.Braille</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #000000; color: #FFFFFF">0.000</td>
+<td class="gt_row gt_right" headers="lowerCI">0.000</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="feature">Grade.8.ELPAC.IA.Writing.I</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #000000; color: #FFFFFF">0.000</td>
+<td class="gt_row gt_right" headers="lowerCI">0.000</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="feature">MigrantStatus</td>
+<td class="gt_row gt_right" headers="mean" style="background-color: #000000; color: #FFFFFF">0.000</td>
+<td class="gt_row gt_right" headers="lowerCI">0.000</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    // For code content inside modals, clipBoardJS needs to be initialized with a container option
+    // TODO: Check when it could be a function (https://github.com/zenorocha/clipboard.js/issues/860)
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
