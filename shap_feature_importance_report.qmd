@@ -257,7 +257,7 @@ Outputs include: - SHAP importance table with confidence intervals\
 
 The full analysis pipeline—including data preprocessing, model training, SHAP computation, and confidence interval estimation—is available in the project repository:
 
-!!!!1 \[GitHub Repository Link\]!!!!!
+https://github.com/cadupee1464/shap_report
 
 All visualizations and tables in this report are generated from persisted pipeline artifacts to ensure reproducibility and separation between analysis and presentation layers.
 
