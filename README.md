@@ -67,7 +67,9 @@ tight confidence intervals
 Student performance behaves as a **general academic signal**, not
 isolated subject outcomes.
 
-![Global Feature Importance](images/shap_features_bar.png)
+<p align="center">
+  <img src="images/shap_features_bar.png" width="700" alt="Global feature importance">
+</p>
 
 ------------------------------------------------------------------------
 
@@ -100,6 +102,7 @@ isolated subject outcomes.
 - **Validation:** Held-out test set (AUC \> baseline)
 
 ![Model AUC Comparisons](images/model_auc_comparison.png)
+
 
 ### Interpretability
 
