@@ -1,0 +1,27 @@
+# filename: styles.css
+
+/* Center all images cleanly */
+img {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Control figure width globally */
+.quarto-figure img {
+  width: 60%;
+  max-width: 800px;
+}
+
+/* Add breathing room around figures */
+.quarto-figure {
+  margin-top: 1.5em;
+  margin-bottom: 1.5em;
+}
+
+/* Optional: tighten captions */
+.quarto-figure figcaption {
+  text-align: center;
+  font-size: 0.9em;
+  color: #555;
+}

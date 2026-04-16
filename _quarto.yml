@@ -1,0 +1,18 @@
+# filename: _quarto.yml
+
+project:
+  type: website
+  output-dir: docs
+
+format:
+  html:
+    output-file: index.html
+    theme: journal
+    css: styles.css
+    fig-align: center
+    fig-width: 6
+    fig-height: 4
+    fig-responsive: true
+    code-fold: false
+    toc: true
+    toc-depth: 2
