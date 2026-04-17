@@ -67,10 +67,10 @@ tight confidence intervals
 Student performance behaves as a **general academic signal**, not
 isolated subject outcomes.
 
-<p align="center">
-  <img src="images/shap_features_bar.png" width="700" alt="Global feature importance">
-</p>
 
+<div align="center">
+  <img src="images/shap_features_bar.png" width="60%">
+</div>
 ------------------------------------------------------------------------
 
 ## Pipeline Architecture
@@ -101,9 +101,10 @@ isolated subject outcomes.
 
 - **Validation:** Held-out test set (AUC \> baseline)
 
-<p align="center">
-  <img src="images/model_auc_comparison.png" width="700" alt="Model AUC Comparisons">
-</p>
+
+<div align="center">
+  <img src="images/model_auc_comparison.png" width="60%">
+</div>
 
 ### Interpretability
 
@@ -141,9 +142,9 @@ Includes:
 
 - Domain-level aggregation
 
-<p align="center">
-  <img src="images/domain_importance.png" width="700" alt="Aggregation of SHAP contribution by Domain">
-</p>
+<div align="center">
+  <img src="images/domain_importance.png" width="60%">
+</div>
 - Confidence interval visualization
 
 - Interpretation of results
