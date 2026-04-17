@@ -24,24 +24,83 @@ ul.task-list li input[type="checkbox"] {
 </style>
 
 
-<script src="shap_feature_importance_report_files/libs/clipboard/clipboard.min.js"></script>
-<script src="shap_feature_importance_report_files/libs/quarto-html/quarto.js"></script>
-<script src="shap_feature_importance_report_files/libs/quarto-html/popper.min.js"></script>
-<script src="shap_feature_importance_report_files/libs/quarto-html/tippy.umd.min.js"></script>
-<script src="shap_feature_importance_report_files/libs/quarto-html/anchor.min.js"></script>
-<link href="shap_feature_importance_report_files/libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="shap_feature_importance_report_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
-<script src="shap_feature_importance_report_files/libs/bootstrap/bootstrap.min.js"></script>
-<link href="shap_feature_importance_report_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="shap_feature_importance_report_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<script src="site_libs/quarto-html/quarto.js"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
 
 
+<link rel="stylesheet" href="styles.css">
 </head>
 
-<body class="fullcontent">
+<body>
 
-<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
-
+<div id="quarto-search-results"></div>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul class="collapse">
+  <li><a href="#overview" id="toc-overview" class="nav-link active" data-scroll-target="#overview">Overview</a></li>
+  <li><a href="#key-takeaways" id="toc-key-takeaways" class="nav-link" data-scroll-target="#key-takeaways">Key Takeaways</a></li>
+  <li><a href="#method" id="toc-method" class="nav-link" data-scroll-target="#method">Method</a></li>
+  <li><a href="#methodological-note-stabilizing-shap-estimates-across-models" id="toc-methodological-note-stabilizing-shap-estimates-across-models" class="nav-link" data-scroll-target="#methodological-note-stabilizing-shap-estimates-across-models">Methodological Note: Stabilizing SHAP Estimates Across Models</a></li>
+  <li><a href="#data-preparation" id="toc-data-preparation" class="nav-link" data-scroll-target="#data-preparation">Data Preparation</a></li>
+  <li><a href="#findings" id="toc-findings" class="nav-link" data-scroll-target="#findings">Findings</a></li>
+  <li><a href="#discussion" id="toc-discussion" class="nav-link" data-scroll-target="#discussion">Discussion</a></li>
+  <li><a href="#practical-implications" id="toc-practical-implications" class="nav-link" data-scroll-target="#practical-implications">Practical Implications</a></li>
+  <li><a href="#limitations" id="toc-limitations" class="nav-link" data-scroll-target="#limitations">Limitations</a></li>
+  <li><a href="#reproducibility" id="toc-reproducibility" class="nav-link" data-scroll-target="#reproducibility">Reproducibility</a></li>
+  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion">Conclusion</a></li>
+  <li><a href="#next-steps" id="toc-next-steps" class="nav-link" data-scroll-target="#next-steps">Next Steps</a></li>
+  <li><a href="#authorship-and-ai-use" id="toc-authorship-and-ai-use" class="nav-link" data-scroll-target="#authorship-and-ai-use">Authorship and AI Use</a></li>
+  <li><a href="#appendix-1-global-feature-importance-table" id="toc-appendix-1-global-feature-importance-table" class="nav-link" data-scroll-target="#appendix-1-global-feature-importance-table">Appendix 1: Global Feature Importance Table</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
 <main class="content" id="quarto-document-content">
 
 <header id="title-block-header" class="quarto-title-block default">
@@ -110,7 +169,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
 <section id="model-validation" class="level4">
 <h4 class="anchored" data-anchor-id="model-validation">Model Validation</h4>
 <p>Model performance was evaluated on a held-out test set to ensure that predictions reflect generalizable patterns rather than overfitting.</p>
-<p><img src="images/model_auc_comparison.png" class="img-fluid" width="1210"></p>
+<p><img src="images/model_auc_comparison.png" class="img-fluid"></p>
 <p>The models achieved performance above a random baseline (AUC &gt; 0.50), indicating that they capture meaningful structure in the data. While predictive performance is not the primary objective of this analysis, this validation step ensures that SHAP-based feature importance results are grounded in a model with non-random predictive signal.</p>
 </section>
 </section>
@@ -181,7 +240,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
 </section>
 <section id="global-feature-importance-plot" class="level3">
 <h3 class="anchored" data-anchor-id="global-feature-importance-plot">Global Feature Importance Plot</h3>
-<p><img src="images/shap_features_bar.png" class="img-fluid" width="1200"></p>
+<p><img src="images/shap_features_bar.png" class="img-fluid"></p>
 <p>For the complete set of contribution values, see Appendix 1.</p>
 <p><strong>Top features:</strong></p>
 <p>1. Math Summative Assessments (multiple grade levels)</p>
@@ -201,23 +260,23 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
 <h3 class="anchored" data-anchor-id="domain-aggregation-table">Domain Aggregation Table</h3>
 <div class="cell">
 <div class="cell-output-display">
-<div id="ucudcyhbbw" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#ucudcyhbbw table {
+<div id="kmndsotirc" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#kmndsotirc table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-#ucudcyhbbw thead, #ucudcyhbbw tbody, #ucudcyhbbw tfoot, #ucudcyhbbw tr, #ucudcyhbbw td, #ucudcyhbbw th {
+#kmndsotirc thead, #kmndsotirc tbody, #kmndsotirc tfoot, #kmndsotirc tr, #kmndsotirc td, #kmndsotirc th {
   border-style: none;
 }
 
-#ucudcyhbbw p {
+#kmndsotirc p {
   margin: 0;
   padding: 0;
 }
 
-#ucudcyhbbw .gt_table {
+#kmndsotirc .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -243,12 +302,12 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   border-left-color: #D3D3D3;
 }
 
-#ucudcyhbbw .gt_caption {
+#kmndsotirc .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-#ucudcyhbbw .gt_title {
+#kmndsotirc .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -260,7 +319,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   border-bottom-width: 0;
 }
 
-#ucudcyhbbw .gt_subtitle {
+#kmndsotirc .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -272,7 +331,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   border-top-width: 0;
 }
 
-#ucudcyhbbw .gt_heading {
+#kmndsotirc .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -284,13 +343,13 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   border-right-color: #D3D3D3;
 }
 
-#ucudcyhbbw .gt_bottom_border {
+#kmndsotirc .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#ucudcyhbbw .gt_col_headings {
+#kmndsotirc .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -305,7 +364,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   border-right-color: #D3D3D3;
 }
 
-#ucudcyhbbw .gt_col_heading {
+#kmndsotirc .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -325,7 +384,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   overflow-x: hidden;
 }
 
-#ucudcyhbbw .gt_column_spanner_outer {
+#kmndsotirc .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -337,15 +396,15 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   padding-right: 4px;
 }
 
-#ucudcyhbbw .gt_column_spanner_outer:first-child {
+#kmndsotirc .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#ucudcyhbbw .gt_column_spanner_outer:last-child {
+#kmndsotirc .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#ucudcyhbbw .gt_column_spanner {
+#kmndsotirc .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -357,11 +416,11 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   width: 100%;
 }
 
-#ucudcyhbbw .gt_spanner_row {
+#kmndsotirc .gt_spanner_row {
   border-bottom-style: hidden;
 }
 
-#ucudcyhbbw .gt_group_heading {
+#kmndsotirc .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -387,7 +446,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   text-align: left;
 }
 
-#ucudcyhbbw .gt_empty_group_heading {
+#kmndsotirc .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -402,15 +461,15 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   vertical-align: middle;
 }
 
-#ucudcyhbbw .gt_from_md > :first-child {
+#kmndsotirc .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#ucudcyhbbw .gt_from_md > :last-child {
+#kmndsotirc .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#ucudcyhbbw .gt_row {
+#kmndsotirc .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -429,7 +488,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   overflow-x: hidden;
 }
 
-#ucudcyhbbw .gt_stub {
+#kmndsotirc .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -442,7 +501,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   padding-right: 5px;
 }
 
-#ucudcyhbbw .gt_stub_row_group {
+#kmndsotirc .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -456,15 +515,15 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   vertical-align: top;
 }
 
-#ucudcyhbbw .gt_row_group_first td {
+#kmndsotirc .gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#ucudcyhbbw .gt_row_group_first th {
+#kmndsotirc .gt_row_group_first th {
   border-top-width: 2px;
 }
 
-#ucudcyhbbw .gt_summary_row {
+#kmndsotirc .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -474,16 +533,16 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   padding-right: 5px;
 }
 
-#ucudcyhbbw .gt_first_summary_row {
+#kmndsotirc .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#ucudcyhbbw .gt_first_summary_row.thick {
+#kmndsotirc .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#ucudcyhbbw .gt_last_summary_row {
+#kmndsotirc .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -493,7 +552,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   border-bottom-color: #D3D3D3;
 }
 
-#ucudcyhbbw .gt_grand_summary_row {
+#kmndsotirc .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -503,7 +562,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   padding-right: 5px;
 }
 
-#ucudcyhbbw .gt_first_grand_summary_row {
+#kmndsotirc .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -513,7 +572,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   border-top-color: #D3D3D3;
 }
 
-#ucudcyhbbw .gt_last_grand_summary_row_top {
+#kmndsotirc .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -523,11 +582,11 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   border-bottom-color: #D3D3D3;
 }
 
-#ucudcyhbbw .gt_striped {
+#kmndsotirc .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#ucudcyhbbw .gt_table_body {
+#kmndsotirc .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -536,7 +595,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   border-bottom-color: #D3D3D3;
 }
 
-#ucudcyhbbw .gt_footnotes {
+#kmndsotirc .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -550,7 +609,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   border-right-color: #D3D3D3;
 }
 
-#ucudcyhbbw .gt_footnote {
+#kmndsotirc .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -559,7 +618,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   padding-right: 5px;
 }
 
-#ucudcyhbbw .gt_sourcenotes {
+#kmndsotirc .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -573,7 +632,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   border-right-color: #D3D3D3;
 }
 
-#ucudcyhbbw .gt_sourcenote {
+#kmndsotirc .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -581,72 +640,72 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   padding-right: 5px;
 }
 
-#ucudcyhbbw .gt_left {
+#kmndsotirc .gt_left {
   text-align: left;
 }
 
-#ucudcyhbbw .gt_center {
+#kmndsotirc .gt_center {
   text-align: center;
 }
 
-#ucudcyhbbw .gt_right {
+#kmndsotirc .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#ucudcyhbbw .gt_font_normal {
+#kmndsotirc .gt_font_normal {
   font-weight: normal;
 }
 
-#ucudcyhbbw .gt_font_bold {
+#kmndsotirc .gt_font_bold {
   font-weight: bold;
 }
 
-#ucudcyhbbw .gt_font_italic {
+#kmndsotirc .gt_font_italic {
   font-style: italic;
 }
 
-#ucudcyhbbw .gt_super {
+#kmndsotirc .gt_super {
   font-size: 65%;
 }
 
-#ucudcyhbbw .gt_footnote_marks {
+#kmndsotirc .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
 
-#ucudcyhbbw .gt_asterisk {
+#kmndsotirc .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#ucudcyhbbw .gt_indent_1 {
+#kmndsotirc .gt_indent_1 {
   text-indent: 5px;
 }
 
-#ucudcyhbbw .gt_indent_2 {
+#kmndsotirc .gt_indent_2 {
   text-indent: 10px;
 }
 
-#ucudcyhbbw .gt_indent_3 {
+#kmndsotirc .gt_indent_3 {
   text-indent: 15px;
 }
 
-#ucudcyhbbw .gt_indent_4 {
+#kmndsotirc .gt_indent_4 {
   text-indent: 20px;
 }
 
-#ucudcyhbbw .gt_indent_5 {
+#kmndsotirc .gt_indent_5 {
   text-indent: 25px;
 }
 
-#ucudcyhbbw .katex-display {
+#kmndsotirc .katex-display {
   display: inline-flex !important;
   margin-bottom: 0.75em !important;
 }
 
-#ucudcyhbbw div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+#kmndsotirc div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
   height: 0px !important;
 }
 </style>
@@ -691,7 +750,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
 </section>
 <section id="domain-importance-plot" class="level3">
 <h3 class="anchored" data-anchor-id="domain-importance-plot">Domain Importance Plot</h3>
-<p><img src="images/domain_importance.png" class="img-fluid" width="810"></p>
+<p><img src="images/domain_importance.png" class="img-fluid"></p>
 </section>
 <section id="confidence-intervals" class="level3">
 <h3 class="anchored" data-anchor-id="confidence-intervals">Confidence Intervals</h3>
@@ -801,7 +860,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
 - Feature importance visualization<br>
 - Reproducible scripts for full pipeline execution</p>
 <p>The full analysis pipeline—including data preprocessing, model training, SHAP computation, and confidence interval estimation—is available in the project repository:</p>
-<p>!!!!1 [GitHub Repository Link]!!!!!</p>
+<p>https://github.com/cadupee1464/shap_report</p>
 <p>All visualizations and tables in this report are generated from persisted pipeline artifacts to ensure reproducibility and separation between analysis and presentation layers.</p>
 <hr>
 </section>
@@ -827,27 +886,28 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
 <section id="authorship-and-ai-use" class="level2">
 <h2 class="anchored" data-anchor-id="authorship-and-ai-use">Authorship and AI Use</h2>
 <p>All project design, methodology, code, and analysis were developed by the author. AI tools (ChatGPT) were used to assist with editing and improving clarity of presentation.</p>
-<section id="appendix-1-global-feature-importance-table" class="level3">
-<h3 class="anchored" data-anchor-id="appendix-1-global-feature-importance-table">Appendix 1: Global Feature Importance Table</h3>
+</section>
+<section id="appendix-1-global-feature-importance-table" class="level2">
+<h2 class="anchored" data-anchor-id="appendix-1-global-feature-importance-table">Appendix 1: Global Feature Importance Table</h2>
 <div id="tbl-shap-full" class="cell anchored">
 <div class="cell-output-display">
-<div id="atgjejhfdi" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#atgjejhfdi table {
+<div id="cjenuktwsl" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#cjenuktwsl table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-#atgjejhfdi thead, #atgjejhfdi tbody, #atgjejhfdi tfoot, #atgjejhfdi tr, #atgjejhfdi td, #atgjejhfdi th {
+#cjenuktwsl thead, #cjenuktwsl tbody, #cjenuktwsl tfoot, #cjenuktwsl tr, #cjenuktwsl td, #cjenuktwsl th {
   border-style: none;
 }
 
-#atgjejhfdi p {
+#cjenuktwsl p {
   margin: 0;
   padding: 0;
 }
 
-#atgjejhfdi .gt_table {
+#cjenuktwsl .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -873,12 +933,12 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   border-left-color: #D3D3D3;
 }
 
-#atgjejhfdi .gt_caption {
+#cjenuktwsl .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-#atgjejhfdi .gt_title {
+#cjenuktwsl .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -890,7 +950,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   border-bottom-width: 0;
 }
 
-#atgjejhfdi .gt_subtitle {
+#cjenuktwsl .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -902,7 +962,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   border-top-width: 0;
 }
 
-#atgjejhfdi .gt_heading {
+#cjenuktwsl .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -914,13 +974,13 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   border-right-color: #D3D3D3;
 }
 
-#atgjejhfdi .gt_bottom_border {
+#cjenuktwsl .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#atgjejhfdi .gt_col_headings {
+#cjenuktwsl .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -935,7 +995,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   border-right-color: #D3D3D3;
 }
 
-#atgjejhfdi .gt_col_heading {
+#cjenuktwsl .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -955,7 +1015,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   overflow-x: hidden;
 }
 
-#atgjejhfdi .gt_column_spanner_outer {
+#cjenuktwsl .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -967,15 +1027,15 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   padding-right: 4px;
 }
 
-#atgjejhfdi .gt_column_spanner_outer:first-child {
+#cjenuktwsl .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#atgjejhfdi .gt_column_spanner_outer:last-child {
+#cjenuktwsl .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#atgjejhfdi .gt_column_spanner {
+#cjenuktwsl .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -987,11 +1047,11 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   width: 100%;
 }
 
-#atgjejhfdi .gt_spanner_row {
+#cjenuktwsl .gt_spanner_row {
   border-bottom-style: hidden;
 }
 
-#atgjejhfdi .gt_group_heading {
+#cjenuktwsl .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1017,7 +1077,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   text-align: left;
 }
 
-#atgjejhfdi .gt_empty_group_heading {
+#cjenuktwsl .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -1032,15 +1092,15 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   vertical-align: middle;
 }
 
-#atgjejhfdi .gt_from_md > :first-child {
+#cjenuktwsl .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#atgjejhfdi .gt_from_md > :last-child {
+#cjenuktwsl .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#atgjejhfdi .gt_row {
+#cjenuktwsl .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1059,7 +1119,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   overflow-x: hidden;
 }
 
-#atgjejhfdi .gt_stub {
+#cjenuktwsl .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1072,7 +1132,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   padding-right: 5px;
 }
 
-#atgjejhfdi .gt_stub_row_group {
+#cjenuktwsl .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -1086,15 +1146,15 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   vertical-align: top;
 }
 
-#atgjejhfdi .gt_row_group_first td {
+#cjenuktwsl .gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#atgjejhfdi .gt_row_group_first th {
+#cjenuktwsl .gt_row_group_first th {
   border-top-width: 2px;
 }
 
-#atgjejhfdi .gt_summary_row {
+#cjenuktwsl .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -1104,16 +1164,16 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   padding-right: 5px;
 }
 
-#atgjejhfdi .gt_first_summary_row {
+#cjenuktwsl .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#atgjejhfdi .gt_first_summary_row.thick {
+#cjenuktwsl .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#atgjejhfdi .gt_last_summary_row {
+#cjenuktwsl .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1123,7 +1183,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   border-bottom-color: #D3D3D3;
 }
 
-#atgjejhfdi .gt_grand_summary_row {
+#cjenuktwsl .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -1133,7 +1193,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   padding-right: 5px;
 }
 
-#atgjejhfdi .gt_first_grand_summary_row {
+#cjenuktwsl .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1143,7 +1203,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   border-top-color: #D3D3D3;
 }
 
-#atgjejhfdi .gt_last_grand_summary_row_top {
+#cjenuktwsl .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -1153,11 +1213,11 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   border-bottom-color: #D3D3D3;
 }
 
-#atgjejhfdi .gt_striped {
+#cjenuktwsl .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#atgjejhfdi .gt_table_body {
+#cjenuktwsl .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -1166,7 +1226,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   border-bottom-color: #D3D3D3;
 }
 
-#atgjejhfdi .gt_footnotes {
+#cjenuktwsl .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -1180,7 +1240,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   border-right-color: #D3D3D3;
 }
 
-#atgjejhfdi .gt_footnote {
+#cjenuktwsl .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -1189,7 +1249,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   padding-right: 5px;
 }
 
-#atgjejhfdi .gt_sourcenotes {
+#cjenuktwsl .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -1203,7 +1263,7 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   border-right-color: #D3D3D3;
 }
 
-#atgjejhfdi .gt_sourcenote {
+#cjenuktwsl .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -1211,72 +1271,72 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
   padding-right: 5px;
 }
 
-#atgjejhfdi .gt_left {
+#cjenuktwsl .gt_left {
   text-align: left;
 }
 
-#atgjejhfdi .gt_center {
+#cjenuktwsl .gt_center {
   text-align: center;
 }
 
-#atgjejhfdi .gt_right {
+#cjenuktwsl .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#atgjejhfdi .gt_font_normal {
+#cjenuktwsl .gt_font_normal {
   font-weight: normal;
 }
 
-#atgjejhfdi .gt_font_bold {
+#cjenuktwsl .gt_font_bold {
   font-weight: bold;
 }
 
-#atgjejhfdi .gt_font_italic {
+#cjenuktwsl .gt_font_italic {
   font-style: italic;
 }
 
-#atgjejhfdi .gt_super {
+#cjenuktwsl .gt_super {
   font-size: 65%;
 }
 
-#atgjejhfdi .gt_footnote_marks {
+#cjenuktwsl .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
 
-#atgjejhfdi .gt_asterisk {
+#cjenuktwsl .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#atgjejhfdi .gt_indent_1 {
+#cjenuktwsl .gt_indent_1 {
   text-indent: 5px;
 }
 
-#atgjejhfdi .gt_indent_2 {
+#cjenuktwsl .gt_indent_2 {
   text-indent: 10px;
 }
 
-#atgjejhfdi .gt_indent_3 {
+#cjenuktwsl .gt_indent_3 {
   text-indent: 15px;
 }
 
-#atgjejhfdi .gt_indent_4 {
+#cjenuktwsl .gt_indent_4 {
   text-indent: 20px;
 }
 
-#atgjejhfdi .gt_indent_5 {
+#cjenuktwsl .gt_indent_5 {
   text-indent: 25px;
 }
 
-#atgjejhfdi .katex-display {
+#cjenuktwsl .katex-display {
   display: inline-flex !important;
   margin-bottom: 0.75em !important;
 }
 
-#atgjejhfdi div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+#cjenuktwsl div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
   height: 0px !important;
 }
 </style>
@@ -2114,11 +2174,11 @@ Student achievement behaves as a <em>generalized academic signal</em>, not a col
 </div>
 </div>
 </div>
-</section>
+
+
 </section>
 
-</main>
-<!-- /main column -->
+</main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
 window.document.addEventListener("DOMContentLoaded", function (event) {
   const toggleBodyColorMode = (bsSheetEl) => {
